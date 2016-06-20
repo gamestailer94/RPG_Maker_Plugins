@@ -69,9 +69,9 @@ Window_Options.prototype.processOk = function(){
     if(symbol != "difficulty" && symbol != "battleStyle") {
         GS_Window_Options_processOk.call(this);
     }else if (symbol === "difficulty"){
-        this.changeDifficulty('up');
+        this.changeDifficulty('up',false);
     }else if(symbol === "battleStyle"){
-        this.changeBattleSys('up');
+        this.changeBattleSys('up',false);
     }
 };
 
@@ -81,9 +81,9 @@ Window_Options.prototype.cursorRight = function(wrap){
     if(symbol != "difficulty" && symbol != "battleStyle") {
         GS_Window_Options_cursorRight.call(this);
     }else if (symbol === "difficulty"){
-        this.changeDifficulty('up');
+        this.changeDifficulty('up',true);
     }else if(symbol === "battleStyle"){
-        this.changeBattleSys('up');
+        this.changeBattleSys('up',true);
     }
 };
 
@@ -93,30 +93,30 @@ Window_Options.prototype.cursorLeft = function(wrap){
     if(symbol != "difficulty" && symbol != "battleStyle") {
         GS_Window_Options_cursorLeft.call(this);
     }else if (symbol === "difficulty"){
-        this.changeDifficulty('down');
+        this.changeDifficulty('down',true);
     }else if(symbol === "battleStyle"){
-        this.changeBattleSys('down');
+        this.changeBattleSys('down',true);
     }
 };
 
-Window_Options.prototype.changeDifficulty = function(state){
+Window_Options.prototype.changeDifficulty = function(state,max){
     var value = $gameVariables.value(GSScripts["Config"]["ExtraSettings"]["Difficulty Variable"] || 1) || 1;
     if(state == 'up'){
         if(value < 3)
             value++;
-        else
+        else if(!max)
             value = 1;
     }else if(state == 'down'){
         if(value > 1)
             value--;
-        else
+        else if(!max)
             value = 3;
     }
     $gameVariables.setValue(GSScripts["Config"]["ExtraSettings"]["Difficulty Variable"] || 1, value);
     this.redrawItem(this.findSymbol("difficulty"));
 };
 
-Window_Options.prototype.changeBattleSys = function(state){
+Window_Options.prototype.changeBattleSys = function(state,max){
     var types = ['atb','ctb','dtb'];
 
     var battleSys = $gameSystem.getBattleSystem();
@@ -127,13 +127,13 @@ Window_Options.prototype.changeBattleSys = function(state){
     if(state == 'up'){
         if(activeType < types.length-1)
             activeType++;
-        else
+        else if(!max)
             activeType = 0;
     }
     if(state == 'down'){
         if(activeType > 0)
             activeType--;
-        else
+        else if(!max)
             activeType = 2;
     }
     $gameSystem.setBattleSystem(types[activeType]);
