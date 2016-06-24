@@ -663,10 +663,10 @@ Window_PartyMenuCommand.prototype.itemTextAlign = function() {
 
 Window_PartyMenuCommand.prototype.makeCommandList = function() {
     this.addChangeCommand();
-    this.addRemoveCommand();
     this.addRevertCommand();
     this.addCustomCommand();
     this.addCancelCommand();
+    this.addRemoveCommand();
 };
 
 Window_PartyMenuCommand.prototype.addChangeCommand = function() {
@@ -902,7 +902,7 @@ Window_PartySelect.prototype.item = function() {
 
 Window_PartyList = function() {
     this.initialize.apply(this, arguments);
-}
+};
 
 Window_PartyList.prototype = Object.create(Window_Selectable.prototype);
 Window_PartyList.prototype.constructor = Window_PartyList;
@@ -1301,6 +1301,94 @@ Window_PartyDetail.prototype.drawActorEquipsList = function(equips) {
 };
 
 //=============================================================================
+// Window_checkRemove
+//=============================================================================
+
+Window_checkRemove = function() {
+    this.initialize.apply(this, arguments);
+}
+
+Window_checkRemove.prototype = Object.create(Window_Command.prototype);
+Window_checkRemove.prototype.constructor = Window_checkRemove;
+
+Window_checkRemove.prototype.initialize = function(){
+    var y = 0;
+    var x = 0;
+    Window_Command.prototype.initialize.call(this,x,y);
+    this.openness = 0;
+    this.deactivate();
+};
+
+Window_checkRemove.prototype.start = function () {
+    this.updateDimensions();
+    this.refresh();
+    this.open();
+};
+
+Window_checkRemove.prototype.updateDimensions = function(){
+    this.width = this.windowWidth(true);
+    this.move((Graphics.boxWidth - this.width) / 2,(Graphics.boxHeight/2), this.width,this.windowHeight());
+};
+
+Window_checkRemove.prototype.makeCommandList = function(){
+    this.addCommand("Yes","accept",true);
+    this.addCommand("No","cancel",true);
+};
+
+Window_checkRemove.prototype.windowWidth = function(real){
+    if(typeof real != 'undefined')
+        return Math.max(this.textWidth("Yes"),this.textWidth("No"),96) + this.padding * 2;
+    else
+        return 200;
+};
+
+Window_checkRemove.prototype.windowHeight = function(){
+    return this.fittingHeight(2)
+};
+
+//=============================================================================
+// Window_removeQuestion
+//=============================================================================
+
+Window_removeQuestion = function() {
+    this.initialize.apply(this, arguments);
+}
+
+Window_removeQuestion.prototype = Object.create(Window_Base.prototype);
+Window_removeQuestion.prototype.constructor = Window_removeQuestion;
+
+Window_removeQuestion.prototype.initialize = function(){
+    var y = (Graphics.boxHeight/2)-this.fittingHeight(1);
+    var x = 0;
+    var height = this.fittingHeight(1);
+    var width = this.windowWidth;
+    Window_Base.prototype.initialize.call(this,x,y,width,height);
+    this.deactivate();
+};
+
+Window_removeQuestion.prototype.start = function(){
+    this.updateDimensions();
+    this.createContents();
+    this.open();
+    this.drawText("Dismiss " + $dataActors[$gameTemp.actorToBeRemoved].name + " ?",0,0,this.contentsWidth(),"center");
+};
+
+Window_removeQuestion.prototype.updateDimensions = function(){
+    this.width = this.windowWidth(true);
+    console.log(this.width);
+    this.move((Graphics.boxWidth - this.width) / 2,(Graphics.boxHeight/2)-this.fittingHeight(1), this.width,this.fittingHeight(1));
+};
+
+Window_removeQuestion.prototype.windowWidth = function(real){
+    if(typeof real != 'undefined')
+        return this.textWidth("Dismiss " + $dataActors[$gameTemp.actorToBeRemoved].name + " ?") + this.padding * 2;
+    else
+        return 200;
+};
+
+
+
+//=============================================================================
 // Battle Engine Core Implementation
 //=============================================================================
 
@@ -1574,18 +1662,13 @@ Scene_Party.prototype.onPartyOk = function() {
       var index = this._partyWindow._index;
       var actor = $gameActors.actor($gameParty._battleMembers[index]);
         var actorId = actor.actorId();
-        for (var i = 1; i < $dataCommonEvents.length; i++){
-            if($dataCommonEvents[i].name.toLowerCase() == "dismiss actor "+actorId) {
-                $gameTemp.reserveCommonEvent($dataCommonEvents[i].id);
-                $gameParty.removeActor(actorId);
-                this.popScene();
-                if(SceneManager._stack.length > 0)
-                    SceneManager.pop();
-            }
-        }
-      this.refreshWindows();
-      this._partyWindow.activate();
+        this.checkRemove(actorId);
     }
+};
+
+Scene_Party.prototype.checkRemove = function(actorId){
+    SceneManager.push(Scene_Check);
+    $gameTemp.actorToBeRemoved = actorId;
 };
 
 Scene_Party.prototype.onPartyCancel = function() {
@@ -1656,6 +1739,53 @@ Scene_Party.prototype.switchActors = function() {
       $gameParty._battleMembers[switchIndex] = switchId;
     };
     $gameParty._battleMembers[targetIndex] = targetId;
+};
+
+//=============================================================================
+// Scene_Check
+//=============================================================================
+
+Scene_Check = function() {
+    this.initialize.apply(this, arguments);
+}
+
+Scene_Check.prototype = Object.create(Scene_MenuBase.prototype);
+Scene_Check.prototype.constructor = Scene_Check;
+
+Scene_Check.prototype.initialize = function() {
+    Scene_MenuBase.prototype.initialize.call(this);
+};
+
+Scene_Check.prototype.create = function(){
+    Scene_MenuBase.prototype.create.call(this);
+    this.createWindows();
+};
+
+Scene_Check.prototype.createWindows = function(){
+    this._checkWindow = new Window_checkRemove();
+    this._removeQuestionWindow = new Window_removeQuestion();
+    this._checkWindow.setHandler('accept', this.removeActor.bind(this));
+    this._checkWindow.setHandler('cancel', this.popScene.bind(this));
+    this._checkWindow.start();
+    this._removeQuestionWindow.start();
+    this.addWindow(this._checkWindow);
+    this.addWindow(this._removeQuestionWindow);
+    this._checkWindow.activate();
+    this._checkWindow.select(1);
+};
+
+Scene_Check.prototype.removeActor = function(){
+    var actorId = $gameTemp.actorToBeRemoved;
+    $gameParty.removeActor(actorId);
+    for (var i = 1; i < $dataCommonEvents.length; i++) {
+        if ($dataCommonEvents[i].name.toLowerCase() == "dismiss actor " + actorId) {
+            $gameTemp.reserveCommonEvent($dataCommonEvents[i].id);
+            this.popScene();
+            if(SceneManager._stack.length > 0)
+                SceneManager.pop();
+        }
+    }
+    this.popScene();
 };
 
 //=============================================================================
