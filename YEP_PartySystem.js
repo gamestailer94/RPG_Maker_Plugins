@@ -1777,6 +1777,7 @@ Scene_Check.prototype.createWindows = function(){
 Scene_Check.prototype.removeActor = function(){
     var actorId = $gameTemp.actorToBeRemoved;
     $gameParty.removeActor(actorId);
+    $gameVariables.setValue(2,$gameVariables.value(2)-1);
     for (var i = 1; i < $dataCommonEvents.length; i++) {
         if ($dataCommonEvents[i].name.toLowerCase() == "dismiss actor " + actorId) {
             $gameTemp.reserveCommonEvent($dataCommonEvents[i].id);
